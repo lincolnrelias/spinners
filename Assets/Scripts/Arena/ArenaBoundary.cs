@@ -15,6 +15,8 @@ public class ArenaBoundary : MonoBehaviour
 
     readonly List<SpinnerTop> _spinners = new List<SpinnerTop>();
 
+    bool _agentsPaired;
+
     const string WallNorth = "Wall_North";
     const string WallSouth = "Wall_South";
     const string WallEast  = "Wall_East";
@@ -22,7 +24,13 @@ public class ArenaBoundary : MonoBehaviour
 
     public Vector2 InnerHalfExtents => innerSize * 0.5f;
 
-    internal void Register(SpinnerTop s)   { if (s != null && !_spinners.Contains(s)) _spinners.Add(s); }
+    internal void Register(SpinnerTop s)
+    {
+        if (s == null || _spinners.Contains(s)) return;
+        _spinners.Add(s);
+        _agentsPaired = false; // re-pareia quando um novo pião entra
+    }
+
     internal void Unregister(SpinnerTop s) { _spinners.Remove(s); }
 
     // ── Simulação ────────────────────────────────────────────────────────────
@@ -34,18 +42,9 @@ public class ArenaBoundary : MonoBehaviour
         for (int i = _spinners.Count - 1; i >= 0; i--)
             if (_spinners[i] == null) _spinners.RemoveAt(i);
 
-        float dt = Time.deltaTime;
+        if (!_agentsPaired) PairAgents();
 
-        // Atrito aplicado uma vez antes da simulação
-        foreach (var s in _spinners)
-        {
-            if (s.DecayPerSecond > 0f)
-            {
-                float f = Mathf.Exp(-s.DecayPerSecond * dt);
-                s._velocity.x *= f;
-                s._velocity.z *= f;
-            }
-        }
+        float dt = Time.deltaTime;
 
         // CCD para bordas
         float remaining = dt;
@@ -73,15 +72,35 @@ public class ArenaBoundary : MonoBehaviour
             ResolveWall(_spinners[eIdx], eAxis, eIsMin);
         }
 
-        // Colisão entre piões via colliders
+        // Colisão entre piões via colliders (dano + impulso)
         ResolveSpinnerCollisions();
+
+        // Agentes atualizam direção após a física
+        for (int i = 0; i < _spinners.Count; i++)
+            _spinners[i].Agent?.Tick(dt);
 
         foreach (var s in _spinners)
             s.ApplyToTransform(dt);
     }
 
-    // Usa Physics.ComputePenetration para detectar e resolver colisões entre piões.
-    // Múltiplas iterações convergem sobreposições residuais.
+    // Conecta cada agente ao seu oponente (primeiro pião diferente da lista).
+    void PairAgents()
+    {
+        for (int i = 0; i < _spinners.Count; i++)
+        {
+            var agent = _spinners[i].Agent;
+            if (agent == null) continue;
+            for (int j = 0; j < _spinners.Count; j++)
+            {
+                if (i != j) { agent.SetOpponent(_spinners[j]); break; }
+            }
+        }
+        _agentsPaired = true;
+    }
+
+    // Detecta colisão com Physics.ComputePenetration.
+    // Iter 0: aplica dano + impulso elástico.
+    // Iters seguintes: só corrige posição (vRel já é ≤ 0 após o impulso).
     void ResolveSpinnerCollisions()
     {
         if (_spinners.Count < 2) return;
@@ -102,7 +121,7 @@ public class ArenaBoundary : MonoBehaviour
                 b._collider, b._position, b.transform.rotation,
                 out Vector3 dir, out float dist)) continue;
 
-            // dir aponta de B para A — zeramos Y para manter no plano XZ
+            // dir aponta de B→A; zeramos Y para manter no plano XZ
             dir.y = 0f;
             if (dir.sqrMagnitude < 1e-8f) continue;
             dir.Normalize();
@@ -117,13 +136,18 @@ public class ArenaBoundary : MonoBehaviour
             b._position.x -= dir.x * (dist * ma / totalM);
             b._position.z -= dir.z * (dist * ma / totalM);
 
-            // Normal de A para B = -dir; resolve velocidades só se aproximando
+            // Normal de A→B = -dir
             float nx   = -dir.x, nz = -dir.z;
             float vRel = (a._velocity.x - b._velocity.x) * nx
                        + (a._velocity.z - b._velocity.z) * nz;
 
-            if (vRel <= 0f) continue;
+            if (vRel <= 0f) continue; // já se afastando — só posição foi corrigida
 
+            // Dano proporcional à velocidade de impacto
+            a.Stats.TakeDamage(vRel, b.Stats);
+            b.Stats.TakeDamage(vRel, a.Stats);
+
+            // Impulso elástico (massa ∝ raio²)
             float impulse  = 2f * vRel / totalM;
             a._velocity.x -= mb * impulse * nx;
             a._velocity.z -= mb * impulse * nz;

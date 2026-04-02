@@ -4,30 +4,31 @@ using UnityEngine;
 [AddComponentMenu("Arena/Spinner Top (Pião)")]
 public class SpinnerTop : MonoBehaviour
 {
-    [SerializeField] ArenaBoundary arena;
+    [SerializeField] ArenaBoundary        arena;
+    [SerializeField] SpinnerCharacterData characterData;
 
     [SerializeField, Tooltip("Raio no plano XZ.")]
     float radius = 0.5f;
 
-    [SerializeField]
+    [SerializeField, Tooltip("Impulso inicial de direção/velocidade (usado sem agente de IA).")]
     Vector3 initialImpulse = new Vector3(4f, 0f, 0f);
 
-    [SerializeField]
-    float initialSpinDegreesPerSecond = 720f;
+    // Estado de simulação — acessado pela ArenaBoundary e SpinnerAgent
+    internal Vector3          _position;
+    internal Vector3          _velocity;
+    internal Collider         _collider;
+    internal SpinnerAgent     Agent         { get; private set; }
+    internal SpinnerStats     Stats         { get; private set; }
+    internal float            Radius        => radius;
+    internal SpinnerCharacterData CharacterData => characterData;
 
-    [SerializeField, Tooltip("Fração da velocidade perdida por segundo (0 = sem atrito).")]
-    float linearVelocityDecayPerSecond = 0.05f;
+    bool _started;
 
-    internal Vector3  _position;
-    internal Vector3  _velocity;
-    internal Collider _collider;
-    internal float    Radius         => radius;
-    internal float    DecayPerSecond => linearVelocityDecayPerSecond;
-
-    float _spinDegPerSec;
-    bool  _started;
-
-    void Awake() => _collider = GetComponent<Collider>();
+    void Awake()
+    {
+        _collider = GetComponent<Collider>();
+        Agent     = GetComponent<SpinnerAgent>();
+    }
 
     void OnEnable()  { if (_started) arena?.Register(this); }
     void OnDisable() { arena?.Unregister(this); }
@@ -40,17 +41,33 @@ public class SpinnerTop : MonoBehaviour
             enabled = false;
             return;
         }
+        if (characterData == null)
+        {
+            Debug.LogError($"{name}: atribua um Character Data.", this);
+            enabled = false;
+            return;
+        }
 
-        _position      = transform.position;
-        _velocity      = new Vector3(initialImpulse.x, 0f, initialImpulse.z);
-        _spinDegPerSec = initialSpinDegreesPerSecond;
-        _started       = true;
+        Stats     = new SpinnerStats(characterData);
+        _position = transform.position;
+        _velocity = new Vector3(initialImpulse.x, 0f, initialImpulse.z);
+        _started  = true;
+
+        Stats.OnDamaged  += lost => Debug.Log($"[{name}] -{lost:F0}°/s  →  {Stats.CurrentSpinSpeed:F0}°/s");
+        Stats.OnDefeated += OnDefeated;
+
         arena.Register(this);
+    }
+
+    void OnDefeated()
+    {
+        _velocity = Vector3.zero;
+        Debug.Log($"[Battle] {name} ({characterData.characterName}) foi derrotado!");
     }
 
     internal void ApplyToTransform(float dt)
     {
         transform.position = _position;
-        transform.Rotate(0f, _spinDegPerSec * dt, 0f, Space.Self);
+        transform.Rotate(0f, Stats.CurrentSpinSpeed * dt, 0f, Space.Self);
     }
 }
