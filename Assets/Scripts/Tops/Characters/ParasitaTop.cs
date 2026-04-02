@@ -27,7 +27,7 @@ public class ParasitaTop : TopBase
         SpinMax        = 400f;
         Spin           = SpinMax;
         Mass           = 0.9f;
-        Radius         = 19f;
+        Radius         = 76f;
         Friction       = 0.002f;
         Restitution    = 0.7f;
         CharacterColor = new Color(0.16f, 0.62f, 0.44f);
@@ -84,20 +84,27 @@ public class ParasitaTop : TopBase
                 _leeches.RemoveAt(i);
     }
 
+    ParasitaData PData => CharacterData as ParasitaData;
+
     public override void OnCollide(TopBase other, float impactForce, float nx, float ny)
     {
+        var   pd              = PData;
+        int   maxPerTarget    = pd != null ? pd.maxLeechesPerTarget : 3;
+        float duration        = pd != null ? pd.leechDuration       : 5f;
+        float drainRate       = pd != null ? pd.leechDrainRate      : 0.008f;
+
         int countOnTarget = 0;
         for (int i = 0; i < _leeches.Count; i++)
             if (_leeches[i].Target == other) countOnTarget++;
 
-        if (countOnTarget >= 3) return;
+        if (countOnTarget >= maxPerTarget) return;
 
         _leeches.Add(new Leech
         {
             Target    = other,
-            DrainRate = other.SpinMax * 0.008f,
+            DrainRate = other.SpinMax * drainRate,
             Elapsed   = 0f,
-            Duration  = 5f,
+            Duration  = duration,
         });
 
         if (FloatingNumbers.Instance != null)
@@ -106,6 +113,8 @@ public class ParasitaTop : TopBase
 
     public override void OnTick(float dt)
     {
+        float healRatio = PData != null ? PData.leechHealRatio : 0.5f;
+
         for (int i = _leeches.Count - 1; i >= 0; i--)
         {
             Leech l = _leeches[i];
@@ -115,9 +124,9 @@ public class ParasitaTop : TopBase
             l.Elapsed += dt;
             if (l.Elapsed >= l.Duration) { _leeches.RemoveAt(i); continue; }
 
-            float drain   = l.DrainRate * dt;
+            float drain    = l.DrainRate * dt;
             l.Target.Spin -= drain;
-            Spin = Mathf.Min(Spin + drain * 0.5f, SpinMax);
+            Spin = Mathf.Min(Spin + drain * healRatio, SpinMax);
 
             _leeches[i] = l;
         }

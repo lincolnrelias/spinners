@@ -3,9 +3,10 @@ using UnityEngine;
 public class TopBase : MonoBehaviour
 {
     // — Identity —
-    public int    Id;
-    public string CharacterName;
-    public Color  CharacterColor;
+    public int                  Id;
+    public string               CharacterName;
+    public Color                CharacterColor;
+    public SpinnerCharacterData CharacterData;   // SO de origem; subclasses fazem cast para o tipo específico
 
     // — Position & movement —
     public float X, Y;
@@ -56,19 +57,10 @@ public class TopBase : MonoBehaviour
     {
         if (!IsAlive || !IsPhysicsActive) return;
 
-        // Spin decay
-        Spin *= (1f - Friction);
-        if (Spin < SpinMax * GameConfig.DeathSpinThreshold) { Die(); return; }
-
         // Position
         X     += VX * dt;
         Y     += VY * dt;
         Angle += Spin * dt;
-
-        // Linear drag (frame-rate independent)
-        float drag = Mathf.Pow(GameConfig.LinearDrag, 60f * dt);
-        VX *= drag;
-        VY *= drag;
 
         // Wobble
         Wobble       = 1f - HPRatio;

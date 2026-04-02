@@ -14,11 +14,19 @@ using UnityEngine;
 ///   6. GameObject "HUD"          → add HUDController.cs
 ///   7. Project Settings → Time → Fixed Timestep = 0.01666...
 ///
-/// The manager auto-creates BerserkerTop and ParasitaTop at runtime.
+/// Assign SpinnerCharacterData assets to the Roster list in the Inspector,
+/// then pick Agent A / Agent B by index to choose which two fight.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
+
+    [Header("Roster — arraste os Character Data aqui")]
+    [SerializeField] SpinnerCharacterData[] roster;
+
+    [Header("Combate — índices no Roster")]
+    [SerializeField] int agentAIndex = 0;
+    [SerializeField] int agentBIndex = 1;
 
     TopBase _topA, _topB;
     bool    _matchEnded;
@@ -40,9 +48,14 @@ public class GameManager : MonoBehaviour
     {
         var cam = Camera.main;
         if (cam == null) return;
-        cam.orthographic      = true;
-        cam.orthographicSize  = Screen.height * 0.5f; // 1 world unit = 1 pixel
+        cam.orthographic       = true;
         cam.transform.position = new Vector3(0f, 0f, -10f);
+
+        // Fit the full arena (ArenaHalfW × ArenaHalfH) with 10 % padding on all sides
+        const float padding = 1.1f;
+        float fitV = GameConfig.ArenaHalfH * padding;
+        float fitH = GameConfig.ArenaHalfW * padding / cam.aspect;
+        cam.orthographicSize  = Mathf.Max(fitV, fitH);
         cam.backgroundColor   = new Color(0.05f, 0.05f, 0.08f);
     }
 
@@ -52,42 +65,77 @@ public class GameManager : MonoBehaviour
     {
         _matchEnded = false;
 
-        // Disable physics while we set up tops
         if (PhysicsWorld.Instance != null)
             PhysicsWorld.Instance.IsRunning = false;
 
-        // — Create Berserker —
-        var goA = new GameObject("Berserker");
-        _topA   = goA.AddComponent<BerserkerTop>();
-        _topA.Id = 0;
-        _topA.X  = -GameConfig.SpawnDistance;
-        _topA.Y  = 0f;
-        _topA.VX = GameConfig.InitialSpeed;
-        _topA.VY = 0f;
+        SpinnerCharacterData dataA = GetData(agentAIndex);
+        SpinnerCharacterData dataB = GetData(agentBIndex);
 
-        // — Create Parasita —
-        var goB = new GameObject("Parasita");
-        _topB   = goB.AddComponent<ParasitaTop>();
-        _topB.Id = 1;
-        _topB.X  = GameConfig.SpawnDistance;
-        _topB.Y  = 0f;
-        _topB.VX = -GameConfig.InitialSpeed;
-        _topB.VY = 0f;
+        _topA = SpawnTop(dataA, id: 0,
+                         x: -GameConfig.SpawnOffsetX, y: -GameConfig.SpawnY,
+                         vx:  GameConfig.InitialSpeedX, vy:  GameConfig.InitialSpeedY);
 
-        // — Wire opponents —
+        _topB = SpawnTop(dataB, id: 1,
+                         x:  GameConfig.SpawnOffsetX,  y:  GameConfig.SpawnY,
+                         vx: -GameConfig.InitialSpeedX, vy: -GameConfig.InitialSpeedY);
+
         _topA.Opponent = _topB;
         _topB.Opponent = _topA;
 
-        // — Countdown —
         HUDController.Instance?.ShowCountdown(3);
         yield return new WaitForSeconds(3.5f);
 
-        // — Start simulation —
         if (PhysicsWorld.Instance != null)
             PhysicsWorld.Instance.IsRunning = true;
 
         HUDController.Instance?.SetTops(_topA, _topB);
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    SpinnerCharacterData GetData(int index)
+    {
+        if (roster != null && roster.Length > 0)
+            return roster[Mathf.Clamp(index, 0, roster.Length - 1)];
+        return null;
+    }
+
+    TopBase SpawnTop(SpinnerCharacterData data, int id,
+                     float x, float y, float vx, float vy)
+    {
+        string goName = data != null ? data.characterName : "Agent";
+        var    go     = new GameObject(goName);
+
+        // Instancia o componente certo baseado no tipo do SO
+        TopBase top = data switch
+        {
+            ParasitaData  => go.AddComponent<ParasitaTop>(),
+            BerserkerData => go.AddComponent<BerserkerTop>(),
+            _             => go.AddComponent<BerserkerTop>(),
+        };
+
+        // Aplica stats do SO (sobrescreve defaults do Awake)
+        if (data != null)
+        {
+            top.CharacterData  = data;
+            top.CharacterName  = data.characterName;
+            top.CharacterColor = data.characterColor;
+            top.Radius         = data.radius;
+            top.Mass           = data.mass;
+            top.Restitution    = data.restitution;
+            top.BaseSpeed      = data.baseSpeed;
+            top.SpinMax        = data.spinMax;
+            top.Spin           = data.spinMax;
+        }
+
+        top.Id = id;
+        top.X  = x;  top.Y  = y;
+        top.VX = vx; top.VY = vy;
+
+        return top;
+    }
+
+    // ── Events ────────────────────────────────────────────────────────────────
 
     void OnTopDeath(object data)
     {
@@ -106,29 +154,25 @@ public class GameManager : MonoBehaviour
 
     IEnumerator DeathSequence(TopBase loser, TopBase winner)
     {
-        // Phase 1 — freeze physics, max wobble (0.3s)
         loser.IsPhysicsActive = false;
         yield return new WaitForSeconds(0.3f);
 
-        // Phase 2 — spiral collapse (0.8s)
         float elapsed   = 0f;
         float spinStart = loser.Spin;
         while (elapsed < 0.8f)
         {
-            elapsed  += Time.deltaTime;
+            elapsed   += Time.deltaTime;
             loser.Spin = Mathf.Lerp(spinStart, 0f, elapsed / 0.8f);
             yield return null;
         }
         loser.Spin = 0f;
 
-        // Phase 3 — explosion
         ParticlePool.Instance?.EmitDeath(loser.X, loser.Y, loser.CharacterColor);
         CameraShake.Instance?.Shake(18f);
         FloatingNumbers.Instance?.Show(loser.X, loser.Y + 50f, "ELIMINADO", Color.white, 24f);
 
         yield return new WaitForSeconds(1.5f);
 
-        // Phase 4 — result screen
         HUDController.Instance?.ShowResult(winner.CharacterName);
     }
 }

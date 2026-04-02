@@ -14,7 +14,7 @@ public class BerserkerTop : TopBase
         SpinMax        = 500f;
         Spin           = SpinMax;
         Mass           = 1.0f;
-        Radius         = 22f;
+        Radius         = 88f;
         Friction       = 0.0015f;
         Restitution    = 0.8f;
         CharacterColor = new Color(0.91f, 0.35f, 0.24f);
@@ -41,9 +41,11 @@ public class BerserkerTop : TopBase
         _furyStacks = Mathf.FloorToInt((1f - HPRatio) / 0.1f); // 0..10
 
         // Fury speed bonus
-        float speedMult    = 1f + _furyStacks * 0.15f;
-        float currentSpeed = Vec2Util.Length(VX, VY);
-        float targetSpeed  = BaseSpeed * speedMult;
+        var    bData      = CharacterData as BerserkerData;
+        float  bonusPerStack = bData != null ? bData.furySpeedBonusPerStack : 0.15f;
+        float  speedMult  = 1f + _furyStacks * bonusPerStack;
+        float  currentSpeed = Vec2Util.Length(VX, VY);
+        float  targetSpeed  = BaseSpeed * speedMult;
 
         if (currentSpeed > 0.1f && currentSpeed < targetSpeed)
         {
@@ -60,7 +62,9 @@ public class BerserkerTop : TopBase
     public override void OnCollide(TopBase other, float impactForce, float nx, float ny)
     {
         if (_furyStacks <= 0) return;
-        float bonusDamage = impactForce * GameConfig.SpinTransferRatio * (_furyStacks * 0.08f);
+        var   bData        = CharacterData as BerserkerData;
+        float transferBonus = bData != null ? bData.furySpinTransferBonusPerStack : 0.08f;
+        float bonusDamage   = impactForce * GameConfig.SpinTransferRatio * (_furyStacks * transferBonus);
         other.Spin -= bonusDamage;
         other.Spin  = Mathf.Max(other.Spin, 0f);
     }
