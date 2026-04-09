@@ -17,6 +17,7 @@ sysinfo.txt
 *.aab
 *.unitypackage
 *.app
+*.meta
 
 # VS / Rider
 .vs/

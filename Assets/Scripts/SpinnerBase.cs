@@ -16,6 +16,11 @@ public class SpinnerBase : MonoBehaviour
     [SerializeField] private AudioClip spinnerCollisionClip;
     [SerializeField] private AudioClip wallCollisionClip;
 
+    [Header("VFX")]
+    [SerializeField] private ParticleSystem collisionVFXPrefab;
+
+    public ParticleSystem CollisionVFXPrefab => collisionVFXPrefab;
+
     protected Rigidbody rb;
 
     protected virtual void Awake()
@@ -78,6 +83,16 @@ public class SpinnerBase : MonoBehaviour
             otherSpinner.TakeDamage(collisionDamage);
             if (CollisionSoundManager.Instance != null)
                 CollisionSoundManager.Instance.PlaySpinnerCollision(spinnerCollisionClip);
+            if (GetEntityId() > otherSpinner.GetEntityId())
+            {
+                ParticleSystem chosenPrefab = Random.value < 0.5f ? collisionVFXPrefab : otherSpinner.CollisionVFXPrefab;
+                if (chosenPrefab != null)
+                {
+                    Vector3 contactPoint = collision.GetContact(0).point;
+                    ParticleSystem vfx = Instantiate(chosenPrefab, contactPoint, Quaternion.identity);
+                    Destroy(vfx.gameObject, vfx.main.duration);
+                }
+            }
         }
         else
         {
