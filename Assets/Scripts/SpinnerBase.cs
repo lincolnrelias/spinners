@@ -10,12 +10,13 @@ public class SpinnerBase : MonoBehaviour
     [SerializeField] private float startingHealth = 100f;
     [SerializeField] private float collisionDamage = 25f;
 
+    public float StartingHealth => startingHealth;
+
     [Header("Audio")]
     [SerializeField] private AudioClip spinnerCollisionClip;
     [SerializeField] private AudioClip wallCollisionClip;
 
     protected Rigidbody rb;
-    private float currentHealth;
 
     protected virtual void Awake()
     {
@@ -25,7 +26,6 @@ public class SpinnerBase : MonoBehaviour
                        | RigidbodyConstraints.FreezeRotationX
                        | RigidbodyConstraints.FreezeRotationZ;
 
-        currentHealth = startingHealth;
         InitMovement();
     }
 
@@ -59,12 +59,11 @@ public class SpinnerBase : MonoBehaviour
 
     public virtual void TakeDamage(float amount)
     {
-        currentHealth -= amount;
-        if (currentHealth <= 0f)
-            Die();
+        if (GameStateManager.Instance != null)
+            GameStateManager.Instance.RegisterDamage(this, amount);
     }
 
-    protected virtual void Die()
+    public virtual void Die()
     {
         Debug.Log($"{gameObject.name} has died.");
         Destroy(gameObject);
