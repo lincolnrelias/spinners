@@ -49,6 +49,7 @@ public class GameStateManager : MonoBehaviour
     private void MatchFinished(SpinnerBase winner)
     {
         Time.timeScale = 0.1f;
+        Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
         if (matchFinishedContainer != null)
             matchFinishedContainer.SetActive(true);
