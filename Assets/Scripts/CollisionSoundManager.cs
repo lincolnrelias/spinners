@@ -20,7 +20,6 @@ public class CollisionSoundManager : MonoBehaviour
     public void PlaySpinnerCollision(AudioClip clip)
     {
         if (clip == null) return;
-        Debug.Log("got to it "+clip.name);
         if (Time.time - lastSpinnerSoundTime < MinTimeBetweenSounds) return;
         lastSpinnerSoundTime = Time.time;
         audioSource.PlayOneShot(clip);
@@ -29,8 +28,6 @@ public class CollisionSoundManager : MonoBehaviour
     public void PlayWallCollision(AudioClip clip)
     {
         if (clip == null) return;
-        Debug.Log("got to it "+clip.name);
-        
         if (Time.time - lastWallSoundTime < MinTimeBetweenSounds) return;
         lastWallSoundTime = Time.time;
         audioSource.PlayOneShot(clip);

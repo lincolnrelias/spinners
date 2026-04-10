@@ -9,6 +9,10 @@ public class GameStateManager : MonoBehaviour
     [SerializeField] private GameObject matchFinishedContainer;
     [SerializeField] private TextMeshProUGUI matchFinishedText;
 
+    [Header("Debug")]
+    [SerializeField] private bool debugLogs = false;
+    public bool DebugLogs => debugLogs;
+
     private readonly Dictionary<SpinnerBase, float> spinnerHealth = new();
     private readonly List<SpinnerBase> activeSpinners = new();
 

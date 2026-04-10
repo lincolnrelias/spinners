@@ -8,9 +8,12 @@ public class SpinnerBase : MonoBehaviour
 
     [Header("Health")]
     [SerializeField] private float startingHealth = 100f;
-    [SerializeField] private float collisionDamage = 25f;
+    [SerializeField] protected float collisionDamage = 25f;
 
     public float StartingHealth => startingHealth;
+    public float CollisionDamage => collisionDamage;
+    public Rigidbody Rb => rb;
+    public float MoveSpeed => moveSpeed;
 
     [Header("Audio")]
     [SerializeField] private AudioClip spinnerCollisionClip;
