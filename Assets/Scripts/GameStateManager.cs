@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
@@ -5,6 +6,9 @@ using TMPro;
 public class GameStateManager : MonoBehaviour
 {
     public static GameStateManager Instance { get; private set; }
+
+    // spinner, currentHealth, maxHealth
+    public static event Action<SpinnerBase, float, float> OnHealthChanged;
 
     [SerializeField] private GameObject matchFinishedContainer;
     [SerializeField] private TextMeshProUGUI matchFinishedText;
@@ -34,7 +38,9 @@ public class GameStateManager : MonoBehaviour
     {
         if (!spinnerHealth.ContainsKey(spinner)) return;
 
-        spinnerHealth[spinner] -= amount;
+        spinnerHealth[spinner] = Mathf.Max(0f, spinnerHealth[spinner] - amount);
+        OnHealthChanged?.Invoke(spinner, spinnerHealth[spinner], spinner.StartingHealth);
+
         if (spinnerHealth[spinner] <= 0f)
         {
             spinnerHealth.Remove(spinner);
