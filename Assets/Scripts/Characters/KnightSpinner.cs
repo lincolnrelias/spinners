@@ -2,36 +2,15 @@ using UnityEngine;
 
 public class KnightSpinner : SpinnerBase
 {
-    [Header("Knight - Orbit")]
+    [Header("Knight")]
     [SerializeField] private Transform swordTransform;
     [SerializeField] private Transform shieldTransform;
-    [SerializeField] private float orbitSpeed = 120f;
 
-    private Vector3 _swordLocalOffset;
-    private Vector3 _shieldLocalOffset;
-    private float _currentOrbitAngle;
     private bool _shieldBlockedThisCollision;
 
     protected override void Awake()
     {
         base.Awake();
-        if (swordTransform != null)
-            _swordLocalOffset = swordTransform.localPosition;
-        if (shieldTransform != null)
-            _shieldLocalOffset = shieldTransform.localPosition;
-    }
-
-    protected override void UpdateMovement()
-    {
-        base.UpdateMovement();
-
-        _currentOrbitAngle += orbitSpeed * Time.deltaTime;
-        Quaternion rot = Quaternion.Euler(0f, _currentOrbitAngle, 0f);
-
-        if (swordTransform != null)
-            swordTransform.localPosition = rot * _swordLocalOffset;
-        if (shieldTransform != null)
-            shieldTransform.localPosition = rot * _shieldLocalOffset;
     }
 
     public float GetSwordDamage() => collisionDamage * 1.5f;
