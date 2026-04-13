@@ -1,12 +1,12 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class AlchemistSpinner : SpinnerBase
 {
     [Header("Potion Throwing")]
-    [SerializeField] private GameObject potionPrefab;
+    [SerializeField] private List<GameObject> potionPrefabs = new();
     [SerializeField] private Transform throwOrigin;
     [SerializeField] private float throwInterval = 3f;
-    [SerializeField] private float potionSpeed = 6f;
 
     private float _throwTimer;
     private int _nextPotionIndex;
@@ -25,19 +25,22 @@ public class AlchemistSpinner : SpinnerBase
 
     private void TryThrow()
     {
-        Vector3 origin = throwOrigin != null ? throwOrigin.position : transform.position;
+        if (potionPrefabs == null || potionPrefabs.Count == 0) return;
 
-        GameObject flask = Instantiate(potionPrefab, origin, Random.rotation);
+        GameObject prefab = potionPrefabs[_nextPotionIndex];
+        _nextPotionIndex = (_nextPotionIndex + 1) % potionPrefabs.Count;
+
+        if (prefab == null) return;
+
+        Vector3 origin = throwOrigin != null ? throwOrigin.position : transform.position;
+        GameObject flask = Instantiate(prefab, origin, Random.rotation);
+
         PotionProjectile proj = flask.GetComponent<PotionProjectile>();
         if (proj == null) return;
-
-        PotionType type = (PotionType)_nextPotionIndex;
-        _nextPotionIndex = (_nextPotionIndex + 1) % 3;
 
         float angle = Random.Range(0f, Mathf.PI * 2f);
         Vector3 randomDir = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
 
-        Collider throwerCollider = GetComponent<Collider>();
-        proj.Launch(origin, randomDir, potionSpeed, type, throwerCollider);
+        proj.Launch(origin, randomDir, GetComponent<Collider>());
     }
 }
