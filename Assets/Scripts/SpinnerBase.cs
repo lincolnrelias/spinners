@@ -1,6 +1,8 @@
+using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(KnockbackSource))]
 public class SpinnerBase : MonoBehaviour
 {
     [SerializeField] protected float spinSpeed = 180f;
@@ -25,6 +27,7 @@ public class SpinnerBase : MonoBehaviour
     public ParticleSystem CollisionVFXPrefab => collisionVFXPrefab;
 
     protected Rigidbody rb;
+    private Vector3 _velocityBeforeCollision;
 
     protected virtual void Awake()
     {
@@ -62,7 +65,10 @@ public class SpinnerBase : MonoBehaviour
     {
         Vector3 vel = rb.linearVelocity;
         vel.y = 0f;
-        rb.linearVelocity = vel.normalized * moveSpeed;
+        if (vel.sqrMagnitude > 0f)
+            vel = vel.normalized * moveSpeed;
+        rb.linearVelocity = vel;
+        _velocityBeforeCollision = vel;
     }
 
     public virtual void TakeDamage(float amount)
@@ -77,8 +83,44 @@ public class SpinnerBase : MonoBehaviour
         Destroy(gameObject);
     }
 
+    public void ApplySlow(float factor, float duration)
+    {
+        StartCoroutine(SlowCoroutine(factor, duration));
+    }
+
+    private IEnumerator SlowCoroutine(float factor, float duration)
+    {
+        moveSpeed *= factor;
+        spinSpeed *= factor;
+        yield return new WaitForSeconds(duration);
+        moveSpeed /= factor;
+        spinSpeed /= factor;
+    }
+
+    public void ApplyPoison(float damagePerTick, float duration, float tickRate)
+    {
+        StartCoroutine(PoisonCoroutine(damagePerTick, duration, tickRate));
+    }
+
+    private IEnumerator PoisonCoroutine(float damagePerTick, float duration, float tickRate)
+    {
+        float elapsed = 0f;
+        WaitForSeconds wait = new WaitForSeconds(tickRate);
+        while (elapsed < duration)
+        {
+            yield return wait;
+            elapsed += tickRate;
+            TakeDamage(damagePerTick);
+        }
+    }
+
     protected virtual void OnCollisionEnter(Collision collision)
     {
+        KnockbackSource knockbackSource = collision.gameObject.GetComponentInParent<KnockbackSource>();
+        bool appliesKnockback = knockbackSource != null && knockbackSource.Affects(gameObject);
+        if (!appliesKnockback)
+            rb.linearVelocity = _velocityBeforeCollision;
+
         SpinnerBase otherSpinner = collision.gameObject.GetComponent<SpinnerBase>();
 
         if (otherSpinner != null)
