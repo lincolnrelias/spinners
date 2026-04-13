@@ -9800,7 +9800,7 @@ GameObject:
   - component: {fileID: 6967617815838573917}
   - component: {fileID: 9094156991435678039}
   m_Layer: 0
-  m_Name: vfx_Impact_01
+  m_Name: impacteffect
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
