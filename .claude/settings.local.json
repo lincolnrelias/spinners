@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p _Game/Art/Characters/Alchemist/Models _Game/Art/Characters/Alchemist/Materials _Game/Art/Characters/Alchemist/Textures _Game/Art/Characters/Knight/Models _Game/Art/Characters/Knight/Materials _Game/Art/Characters/Knight/Textures _Game/Art/Characters/Base/Models _Game/Art/Characters/Base/Materials _Game/Art/Characters/Base/Textures _Game/Art/UI _Game/Audio _Game/Physics _Game/Prefabs/Characters/Alchemist _Game/Prefabs/VFX)",
+      "Bash(mv flaskmodel.fbx flaskmodel.fbx.meta _Game/Art/Characters/Alchemist/Models/)",
+      "Bash(mv poisonflask.fbx poisonflask.fbx.meta _Game/Art/Characters/Alchemist/Models/)",
+      "Bash(mv potionmaterial.mat potionmaterial.mat.meta _Game/Art/Characters/Alchemist/Materials/)",
+      "Bash(mv \"potionmaterial 1.mat\" \"potionmaterial 1.mat.meta\" _Game/Art/Characters/Alchemist/Materials/)"
+    ]
+  }
+}
